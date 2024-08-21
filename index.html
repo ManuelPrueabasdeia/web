@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Mosquitos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #camera {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            border: 5px solid #8c1936;
+            border-radius: 10px;
+        }
+
+        #capture {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #CF945A;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #snapshot {
+            margin-top: 20px;
+            max-width: 100%;
+            border: 5px solid #8c1936;
+            border-radius: 10px;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Detector de Mosquitos</h1>
+    <video id="camera" autoplay></video>
+    <button id="capture">Capturar Imagen</button>
+    <canvas id="snapshot" style="display:none;"></canvas>
+    <div id="result"></div>
+
+    <!-- Incluir TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    
+    <script>
+        // Acceder a la cámara
+        const video = document.getElementById('camera');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error('Error al acceder a la cámara: ', err);
+            });
+
+        // Capturar la imagen y hacer la predicción
+        const captureButton = document.getElementById('capture');
+        const canvas = document.getElementById('snapshot');
+        const resultDiv = document.getElementById('result');
+
+        let model;
+
+        // Cargar el modelo MobileNet
+        mobilenet.load().then(loadedModel => {
+            model = loadedModel;
+            console.log('Modelo cargado');
+        });
+
+        captureButton.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convertir la imagen del canvas a un tensor
+            const imageTensor = tf.browser.fromPixels(canvas);
+
+            // Hacer la predicción
+            model.classify(imageTensor).then(predictions => {
+                console.log('Predicciones: ', predictions);
+                resultDiv.innerHTML = `Predicción: ${predictions[0].className} <br> 
+                                       Probabilidad: ${(predictions[0].probability * 100).toFixed(2)}%`;
+            }).catch(err => {
+                console.error('Error al hacer la predicción: ', err);
+            });
+        });
+    </script>
+
+</body>
+</html>
