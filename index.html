@@ -59,16 +59,33 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
     <script>
-        // Acceder a la cámara
-        const video = document.getElementById('camera');
+        // Función para acceder a la cámara
+        async function startCamera() {
+            try {
+                // Obtener los dispositivos de video disponibles
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                // Seleccionar la cámara trasera
+                const backCamera = videoDevices.find(device => device.label.includes('back')) ||
+                                  videoDevices.find(device => device.label.includes('rear'));
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-            })
-            .catch(err => {
+                if (backCamera) {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: backCamera.deviceId }
+                    });
+                    const video = document.getElementById('camera');
+                    video.srcObject = stream;
+                } else {
+                    console.warn('No se encontró una cámara trasera.');
+                }
+            } catch (err) {
                 console.error('Error al acceder a la cámara: ', err);
-            });
+            }
+        }
+
+        // Iniciar la cámara cuando la página se cargue
+        window.onload = startCamera;
 
         // Capturar la imagen y hacer la predicción
         const captureButton = document.getElementById('capture');
@@ -84,6 +101,7 @@
         });
 
         captureButton.addEventListener('click', () => {
+            const video = document.getElementById('camera');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
@@ -95,7 +113,17 @@
             // Hacer la predicción
             model.classify(imageTensor).then(predictions => {
                 console.log('Predicciones: ', predictions);
-                resultDiv.innerHTML = `Predicción: ${predictions[0].className} <br> 
+                // Traducir resultados al español (básico)
+                const traducciones = {
+                    "mosquito": "Mosquito",
+                    "insect": "Insecto",
+                    "animal": "Animal",
+                    "person": "Persona"
+                    // Agregar más traducciones según sea necesario
+                };
+
+                const resultadoEnEspañol = traducciones[predictions[0].className.toLowerCase()] || predictions[0].className;
+                resultDiv.innerHTML = `Predicción: ${resultadoEnEspañol} <br> 
                                        Probabilidad: ${(predictions[0].probability * 100).toFixed(2)}%`;
             }).catch(err => {
                 console.error('Error al hacer la predicción: ', err);
