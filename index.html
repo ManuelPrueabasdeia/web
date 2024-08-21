@@ -44,11 +44,23 @@
             font-size: 18px;
             color: #333;
         }
+
+        #cameras {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #8c1936;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
     <h1>Detector de Mosquitos</h1>
+    <select id="cameras"></select>
     <video id="camera" autoplay></video>
     <button id="capture">Capturar Imagen</button>
     <canvas id="snapshot" style="display:none;"></canvas>
@@ -59,33 +71,47 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
     <script>
-        // Función para acceder a la cámara
-        async function startCamera() {
+        // Listar las cámaras disponibles y permitir al usuario elegir una
+        async function getCameras() {
             try {
-                // Obtener los dispositivos de video disponibles
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                // Seleccionar la cámara trasera
-                const backCamera = videoDevices.find(device => device.label.includes('back')) ||
-                                  videoDevices.find(device => device.label.includes('rear'));
+                const camerasSelect = document.getElementById('cameras');
 
-                if (backCamera) {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: backCamera.deviceId }
-                    });
-                    const video = document.getElementById('camera');
-                    video.srcObject = stream;
-                } else {
-                    console.warn('No se encontró una cámara trasera.');
-                }
+                videoDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Cámara ${camerasSelect.length + 1}`;
+                    camerasSelect.appendChild(option);
+                });
+
+                camerasSelect.addEventListener('change', startCamera);
+                startCamera(); // Iniciar con la cámara seleccionada por defecto
             } catch (err) {
-                console.error('Error al acceder a la cámara: ', err);
+                console.error('Error al obtener las cámaras: ', err);
             }
         }
 
-        // Iniciar la cámara cuando la página se cargue
-        window.onload = startCamera;
+        // Iniciar la cámara seleccionada
+        async function startCamera() {
+            try {
+                const video = document.getElementById('camera');
+                const camerasSelect = document.getElementById('cameras');
+                const selectedCameraId = camerasSelect.value;
+
+                if (selectedCameraId) {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: selectedCameraId }
+                    });
+                    video.srcObject = stream;
+                }
+            } catch (err) {
+                console.error('Error al iniciar la cámara: ', err);
+            }
+        }
+
+        // Cargar la lista de cámaras cuando la página se cargue
+        window.onload = getCameras;
 
         // Capturar la imagen y hacer la predicción
         const captureButton = document.getElementById('capture');
